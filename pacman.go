@@ -40,6 +40,13 @@ const (
 )
 
 //Ghost States
+type GhostState int64
+
+const (
+	WAITING   GhostState = iota
+	SEARCHING            = iota
+	ESCAPING             = iota
+)
 
 //Game Objects
 type Player struct {
@@ -104,6 +111,10 @@ func loadLevel(filename string) error {
 		level = append(level, line)
 	}
 	return nil
+}
+
+func setupInput() {
+
 }
 
 func readInput() {
