@@ -1,4 +1,6 @@
-package pacman
+package main
+
+import "github.com/hajimehoshi/ebiten/v2"
 
 //Input Consts
 type Input byte
@@ -12,3 +14,22 @@ const (
 	START        = 1 << iota // 32
 	NONE         = 1 << iota // 64
 )
+
+func readInput() Input {
+	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
+		return UP
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
+		return DOWN
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
+		return LEFT
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+		return RIGHT
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
+		return ESCAPE
+	}
+	return NONE
+}

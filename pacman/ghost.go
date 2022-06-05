@@ -1,10 +1,11 @@
-package pacman
+package main
 
 type Ghost struct {
-	xPos, yPos      int
-	lives           int
-	facingDirection Direction
-	isAlive         bool
+	xSpawnPos, ySpawnPos int
+	xPos, yPos           int
+	lives                int
+	facingDirection      Direction
+	isAlive              bool
 }
 
 //Ghost States

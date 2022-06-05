@@ -1,10 +1,10 @@
 # build & test automation
 
 build:
-	go build pacman.go
+	go build ./pacman
 
 test: build
 	./pacman
 
 clean:
-	rm -rf pacman
+	rm -rf pacman.exe
