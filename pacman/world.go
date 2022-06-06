@@ -11,8 +11,6 @@ import (
 type CellType int
 
 const (
-	hasPLAYER = iota
-	hasGHOST  = iota
 	hasWALL   = iota
 	hasPELLET = iota
 	hasPOWER  = iota
@@ -26,12 +24,13 @@ type Cell struct {
 
 var WALLCELL, EMPTYCELL, PELLETCELL, POWERCELL *ebiten.Image
 var player Player
+var ghost0, ghost1, ghost2, ghost3, ghost4 Ghost
 
 type World struct {
 	player       *Player
 	levelMatrix  [][]Cell
+	ghosts       [4]*Ghost
 	levelPellets int
-	//activeGhosts []Ghost
 }
 
 func initCells() {
@@ -79,6 +78,25 @@ func (world *World) loadMaze(file string) error {
 	world.levelPellets = 0
 	world.player = &player
 
+	var ghostCounter = 0
+
+	//Thios is not ideal, but due to time constraints was the only way I could think of doing it
+	for i := range world.ghosts {
+		switch i {
+		case 0:
+			world.ghosts[i] = &ghost0
+		case 1:
+			world.ghosts[i] = &ghost1
+		case 2:
+			world.ghosts[i] = &ghost2
+		case 3:
+			world.ghosts[i] = &ghost3
+		case 4:
+			world.ghosts[i] = &ghost4
+		}
+		world.ghosts[i].isActive = false
+	}
+
 	for yPos := range maze {
 		for xPos, cell := range maze[yPos] {
 			switch cell {
@@ -92,7 +110,8 @@ func (world *World) loadMaze(file string) error {
 			case 'P':
 				world.player.initPlayer(xPos, yPos, EAST)
 			case 'G':
-				fallthrough
+				world.ghosts[ghostCounter].initGhost(xPos, yPos)
+				ghostCounter++
 			case ' ':
 				world.levelMatrix[yPos][xPos].CellType = EMPTY
 			}
@@ -124,9 +143,14 @@ func (world *World) loadMaze(file string) error {
 }
 */
 
-func (world *World) initLevel() {
+func (world *World) initWorld() {
 	world.loadMaze("level.txt")
-	go world.player.Update(world)
+	go world.player.runPlayer(world)
+	for _, ghost := range world.ghosts {
+		if ghost.isActive {
+			go ghost.runGhost(world)
+		}
+	}
 
 }
 
@@ -143,9 +167,50 @@ func (world *World) checkPlayerCollisions() {
 	}
 }
 
+func (world *World) checkGhostCollisions(ghost *Ghost) bool {
+	switch world.levelMatrix[ghost.yPos][ghost.xPos].CellType {
+	case hasWALL:
+		ghost.xPos -= CardinalDirections[ghost.facingDirection].xDir
+		ghost.yPos -= CardinalDirections[ghost.facingDirection].yDir
+		return true
+	}
+	if world.player.xPos == ghost.xPos && world.player.yPos == ghost.yPos {
+		if ghost.state == SEARCHING {
+			world.playerHit()
+			return false
+		} else {
+			ghost.respawnGhost()
+		}
+	}
+
+	//Prevents the player and a ghost "jumping" over each other if they switch places
+	if world.player.xPos == ghost.xPrev && world.player.yPos == ghost.yPrev && world.player.xPrev == ghost.xPos && world.player.yPrev == ghost.yPos {
+		if ghost.state == SEARCHING {
+			world.playerHit()
+			return false
+		} else {
+			ghost.respawnGhost()
+		}
+
+	}
+	return false
+}
+
+func (world *World) playerHit() {
+	if player.lives > 0 {
+		player.respawnPlayer()
+		for _, ghost := range world.ghosts {
+			ghost.respawnGhost()
+		}
+	} else {
+		os.Exit(0)
+	}
+
+}
+
 func (world *World) Draw(screen *ebiten.Image) {
 
-	for y, _ := range world.levelMatrix {
+	for y := range world.levelMatrix {
 		for x, cell := range world.levelMatrix[y] {
 			var image *ebiten.Image
 			var cellOffset float64 = 0
@@ -172,4 +237,9 @@ func (world *World) Draw(screen *ebiten.Image) {
 		}
 	}
 	world.player.Draw(screen)
+	for _, ghost := range world.ghosts {
+		if ghost.isActive {
+			ghost.Draw(screen)
+		}
+	}
 }

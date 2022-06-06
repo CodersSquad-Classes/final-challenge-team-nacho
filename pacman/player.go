@@ -2,6 +2,7 @@ package main
 
 import (
 	"image/color"
+	"os"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -9,6 +10,7 @@ import (
 
 type Player struct {
 	xSpawnPos, ySpawnPos int
+	xPrev, yPrev         int
 	xPos, yPos           int
 	lives                int
 	facingDirection      Direction
@@ -17,6 +19,7 @@ type Player struct {
 }
 
 func (player *Player) initPlayer(xPos int, yPos int, facingDirection Direction) {
+	player.lives = 2
 
 	player.xPos = xPos
 	player.xSpawnPos = xPos
@@ -29,12 +32,15 @@ func (player *Player) initPlayer(xPos int, yPos int, facingDirection Direction) 
 }
 
 func (player *Player) respawnPlayer() {
+	player.lives--
 	player.xPos = player.xSpawnPos
 	player.yPos = player.ySpawnPos
 	player.facingDirection = EAST
 }
 
 func (player *Player) movePlayer() {
+	player.xPrev = player.xPos
+	player.yPrev = player.yPos
 	player.xPos += CardinalDirections[player.facingDirection].xDir
 	player.yPos += CardinalDirections[player.facingDirection].yDir
 }
@@ -51,6 +57,8 @@ func (player *Player) processPlayerInput(input Input, level *World) {
 		player.facingDirection = WEST
 	case RIGHT:
 		player.facingDirection = EAST
+	case ESCAPE:
+		os.Exit(0)
 	}
 
 	newDirection := CardinalDirections[player.facingDirection]
@@ -61,12 +69,17 @@ func (player *Player) processPlayerInput(input Input, level *World) {
 	}
 }
 
-func (player *Player) Update(level *World) {
+func (player *Player) runPlayer(world *World) {
 	for {
-		player.processPlayerInput(readInput(), level)
-		player.movePlayer()
-		level.checkPlayerCollisions()
-		time.Sleep(SLEEPTIME)
+		select {
+		case <-stopSignal:
+			return
+		default:
+			player.processPlayerInput(readInput(), world)
+			player.movePlayer()
+			world.checkPlayerCollisions()
+			time.Sleep(SLEEPTIME)
+		}
 	}
 
 }

@@ -26,6 +26,7 @@ var boardX int = 28
 var boardY int = 24
 var blockSize = 1
 var pacmanGame PacmanGame
+var stopSignal = make(chan bool)
 
 //Player Functions
 
@@ -66,7 +67,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func pacmanGameInit() {
 	var world World
 	pacmanGame.world = &world
-	pacmanGame.world.initLevel()
+	pacmanGame.world.initWorld()
 }
 
 func main() {
