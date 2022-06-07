@@ -14,8 +14,11 @@ type Ghost struct {
 	xPos, yPos           int
 	facingDirection      Direction
 	sprite               *ebiten.Image
+	regularSprite        *ebiten.Image
+	escapingSprite       *ebiten.Image
 	state                GhostState
 	isActive             bool
+	searchTimer          int
 }
 
 //Ghost States
@@ -36,9 +39,12 @@ func (ghost *Ghost) initGhost(xPos int, yPos int) {
 	ghost.ySpawnPos = yPos
 	ghost.facingDirection = NORTH
 
-	ghost.sprite = ebiten.NewImage(CELLSIZE*.75, CELLSIZE*.75)
-	ghost.sprite.Fill(color.RGBA{255, 0, 0, 255})
+	ghost.regularSprite = ebiten.NewImage(CELLSIZE*.75, CELLSIZE*.75)
+	ghost.regularSprite.Fill(color.RGBA{255, 0, 0, 255})
+	ghost.escapingSprite = ebiten.NewImage(CELLSIZE*.75, CELLSIZE*.75)
+	ghost.escapingSprite.Fill(color.RGBA{255, 0, 255, 255})
 
+	ghost.sprite = ghost.regularSprite
 	ghost.state = SEARCHING
 }
 
@@ -47,6 +53,7 @@ func (ghost *Ghost) respawnGhost() {
 	ghost.yPos = ghost.ySpawnPos
 	ghost.facingDirection = NORTH
 	ghost.state = SEARCHING
+	ghost.sprite = ghost.regularSprite
 }
 
 func (ghost *Ghost) moveGhost() {
@@ -80,23 +87,53 @@ func (ghost *Ghost) changeDirection() {
 
 }
 
+func (ghost *Ghost) startEscaping() int {
+	ghost.state = ESCAPING
+	ghost.sprite = ghost.escapingSprite
+
+	switch ghost.facingDirection {
+	case NORTH:
+		ghost.facingDirection = SOUTH
+	case SOUTH:
+		ghost.facingDirection = NORTH
+	case EAST:
+		ghost.facingDirection = WEST
+	case WEST:
+		ghost.facingDirection = EAST
+	}
+	return 50
+}
+func (ghost *Ghost) stopEscaping() {
+	ghost.state = SEARCHING
+	ghost.sprite = ghost.regularSprite
+}
+
 func (ghost *Ghost) runGhost(world *World) {
 	for {
 
 		select {
 		case <-stopSignal:
 			return
+
 		default:
-			ghost.moveGhost()
+			select {
+			case <-escapeSignal:
+				ghost.searchTimer = ghost.startEscaping()
+			default:
+				if ghost.searchTimer == 0 {
+					ghost.stopEscaping()
+				} else {
+					ghost.searchTimer--
+				}
+			}
+
 			hasCollided := world.checkGhostCollisions(ghost)
+			ghost.moveGhost()
+			hasCollided = world.checkGhostCollisions(ghost)
 			if hasCollided {
 				ghost.changeDirection()
 			}
 
-			//TODO: CHANGE GHOSTS STATES
-			select {
-			default:
-			}
 			time.Sleep(SLEEPTIME)
 		}
 	}

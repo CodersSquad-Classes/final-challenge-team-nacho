@@ -2,10 +2,16 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"image/color"
+	"log"
 	"os"
 
+	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/opentype"
 )
 
 type CellType int
@@ -31,6 +37,9 @@ type World struct {
 	levelMatrix  [][]Cell
 	ghosts       [4]*Ghost
 	levelPellets int
+	fontFace     font.Face
+	bigFontFace  font.Face
+	gameState    GameState
 }
 
 func initCells() {
@@ -44,7 +53,25 @@ func initCells() {
 	POWERCELL.Fill(color.RGBA{0, 255, 255, 255})
 }
 
-func (world *World) loadMaze(file string) error {
+func (world *World) initFont() {
+	tt, err := opentype.Parse(fonts.MPlus1pRegular_ttf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	world.fontFace, err = opentype.NewFace(tt, &opentype.FaceOptions{
+		Size:    20,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+	world.bigFontFace, err = opentype.NewFace(tt, &opentype.FaceOptions{
+		Size:    60,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+}
+
+func (world *World) loadMaze(file string, numGhosts int) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return err
@@ -107,11 +134,16 @@ func (world *World) loadMaze(file string) error {
 				world.levelPellets++
 			case 'X':
 				world.levelMatrix[yPos][xPos].CellType = hasPOWER
+				world.levelPellets++
 			case 'P':
 				world.player.initPlayer(xPos, yPos, EAST)
 			case 'G':
-				world.ghosts[ghostCounter].initGhost(xPos, yPos)
-				ghostCounter++
+				if ghostCounter < numGhosts {
+					world.ghosts[ghostCounter].initGhost(xPos, yPos)
+					ghostCounter++
+				} else {
+					world.levelMatrix[yPos][xPos].CellType = EMPTY
+				}
 			case ' ':
 				world.levelMatrix[yPos][xPos].CellType = EMPTY
 			}
@@ -119,6 +151,7 @@ func (world *World) loadMaze(file string) error {
 		}
 	}
 	initCells()
+	world.initFont()
 	return nil
 }
 
@@ -143,14 +176,15 @@ func (world *World) loadMaze(file string) error {
 }
 */
 
-func (world *World) initWorld() {
-	world.loadMaze("level.txt")
+func (world *World) initWorld(numGhosts int) {
+	world.loadMaze("level.txt", numGhosts)
 	go world.player.runPlayer(world)
 	for _, ghost := range world.ghosts {
 		if ghost.isActive {
 			go ghost.runGhost(world)
 		}
 	}
+	world.gameState = INGAME
 
 }
 
@@ -160,6 +194,12 @@ func (world *World) checkPlayerCollisions() {
 		world.player.xPos -= CardinalDirections[world.player.facingDirection].xDir
 		world.player.yPos -= CardinalDirections[world.player.facingDirection].yDir
 	case hasPOWER:
+		for _, ghost := range world.ghosts {
+			if ghost.isActive {
+				escapeSignal <- ESCAPING
+			}
+			escapeSignal <- ESCAPING
+		}
 		fallthrough
 	case hasPELLET:
 		world.levelMatrix[world.player.yPos][world.player.xPos].CellType = EMPTY
@@ -195,7 +235,13 @@ func (world *World) checkGhostCollisions(ghost *Ghost) bool {
 	}
 	return false
 }
+func (world *World) stopWorld() {
+	stopSignal <- true
+	for _ = range world.ghosts {
+		stopSignal <- true
+	}
 
+}
 func (world *World) playerHit() {
 	if player.lives > 0 {
 		player.respawnPlayer()
@@ -203,9 +249,17 @@ func (world *World) playerHit() {
 			ghost.respawnGhost()
 		}
 	} else {
-		os.Exit(0)
+		world.gameState = LOST
+		world.stopWorld()
 	}
 
+}
+
+func (world *World) checkPlayerWon() {
+	if world.player.score >= world.levelPellets {
+		world.gameState = WON
+		world.stopWorld()
+	}
 }
 
 func (world *World) Draw(screen *ebiten.Image) {
@@ -241,5 +295,17 @@ func (world *World) Draw(screen *ebiten.Image) {
 		if ghost.isActive {
 			ghost.Draw(screen)
 		}
+	}
+
+	score := fmt.Sprintf("Score: %d", world.player.score)
+	lives := fmt.Sprintf("Lives: %d", world.player.lives)
+
+	if world.gameState == LOST {
+		text.Draw(screen, "You Lost", world.bigFontFace, int(WIDTHOFFSET), HEIGHT-10, color.White)
+	} else if world.gameState == WON {
+		text.Draw(screen, "YOU WON!!", world.bigFontFace, int(WIDTHOFFSET), HEIGHT-10, color.White)
+	} else {
+		text.Draw(screen, score, world.fontFace, int(WIDTHOFFSET), (boardY+1)*CELLSIZE, color.White)
+		text.Draw(screen, lives, world.fontFace, int(WIDTHOFFSET), (boardY+2)*CELLSIZE, color.White)
 	}
 }

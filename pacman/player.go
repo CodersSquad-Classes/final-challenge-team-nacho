@@ -78,6 +78,7 @@ func (player *Player) runPlayer(world *World) {
 			player.processPlayerInput(readInput(), world)
 			player.movePlayer()
 			world.checkPlayerCollisions()
+			world.checkPlayerWon()
 			time.Sleep(SLEEPTIME)
 		}
 	}
