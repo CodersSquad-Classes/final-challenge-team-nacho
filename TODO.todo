@@ -1,0 +1,22 @@
+DONE The game's maze layout can be static.           
+DONE The pacman gamer must be controlled by the user.
+DONE Enemies are autonomous entities that will move a random way.
+DONE Enemies and pacman should respect the layout limits and walls.
+DONE Enemies number can be configured on game's start.
+DONE Each enemy's behaviour will be implemented as a separated thread.
+DONE Enemies and pacman threads must use the same map or game layout data structure resource.
+DONE Display obtained pacman's scores.
+DONE Pacman loses when an enemy touches it.
+DONE Pacman wins the game when it has taken all coins in the map
+
+DONE Power pellet functionalities
+
+DONE Source code dependencies must be clearly documented.
+
+DONE Architecture Document - ARCHITECTURE.md
+        Details on how you designed and implemented your solution
+        Project architecture description, diagrams, charts and everything related to the way you think/design/build your program
+DONE Build/Run automation (Makefile and documentation - PACMAN.md)
+        Instructions on how to build and run your program
+DONE Project's presentation (5-10 minutes)
+        A video presentation that will be delivered to the professor, in youtube preferable
